@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLD Facilitator Intelligence Portal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0d0f14; --surface: #161a23; --surface2: #1e2433; --surface3: #252d3d;
+    --border: #2a3347; --magenta: #c8146b; --magenta-light: #e91e8c;
+    --magenta-glow: rgba(200,20,107,0.18); --magenta-soft: rgba(200,20,107,0.08);
+    --amber: #f59e0b; --teal: #0ea5c5; --green: #22c55e; --purple: #8b5cf6;
+    --text: #e8ecf4; --text-muted: #7d8ba0; --text-faint: #4a5568;
+    --card-r: 12px; --transition: 0.22s cubic-bezier(0.4,0,0.2,1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* SIDEBAR */
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; transition: transform var(--transition); }
+  .logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+  .logo-top { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); letter-spacing: 0.5px; }
+  .logo-sub { font-size: 10px; color: var(--magenta); font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 2px; }
+  .magenta-bar { width: 28px; height: 2px; background: var(--magenta); border-radius: 2px; margin-top: 8px; }
+  .nav { padding: 12px 0; flex: 1; overflow-y: auto; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 18px; cursor: pointer; color: var(--text-muted); font-size: 13px; font-weight: 500; transition: all var(--transition); border-left: 3px solid transparent; margin-bottom: 2px; }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--magenta-light); background: var(--magenta-soft); border-left-color: var(--magenta); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-group-label { font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-faint); padding: 16px 18px 6px; }
+
+  /* SYNC STATUS */
+  .sync-bar { padding: 10px 18px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text-faint); display: flex; align-items: center; gap: 6px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .sync-dot.loading { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-dot.error { background: #ef4444; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* MAIN */
+  .main { margin-left: 220px; min-height: 100vh; display: flex; flex-direction: column; }
+  .topbar { position: sticky; top: 0; background: rgba(13,15,20,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; z-index: 50; }
+  .page-title { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; flex: 1; }
+  .search-box { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; width: 240px; }
+  .search-box input { background: none; border: none; outline: none; color: var(--text); font-size: 13px; width: 100%; font-family: 'Inter', sans-serif; }
+  .search-box input::placeholder { color: var(--text-faint); }
+  .refresh-btn { padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted); cursor: pointer; transition: all var(--transition); font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 6px; }
+  .refresh-btn:hover { color: var(--magenta-light); border-color: var(--magenta); }
+  .content { padding: 24px; flex: 1; }
+
+  /* LOADING SCREEN */
+  .loading-screen { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; transition: opacity 0.5s; }
+  .loading-screen.hidden { opacity: 0; pointer-events: none; }
+  .loading-logo { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: var(--text); }
+  .loading-sub { font-size: 13px; color: var(--text-muted); }
+  .loading-bar-wrap { width: 200px; height: 3px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+  .loading-bar { height: 100%; background: linear-gradient(90deg, var(--magenta), var(--purple)); border-radius: 2px; animation: loadBar 1.5s ease-in-out infinite; }
+  @keyframes loadBar { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
+  .loading-step { font-size: 11px; color: var(--text-faint); font-style: italic; }
+
+  /* CONFIG SCREEN */
+  .config-screen { position: fixed; inset: 0; background: var(--bg); z-index: 998; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .config-screen.hidden { display: none; }
+  .config-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; max-width: 560px; width: 100%; }
+  .config-title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .config-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.6; }
+  .config-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; font-family: 'Inter', sans-serif; padding: 10px 14px; outline: none; margin-bottom: 14px; transition: border-color var(--transition); }
+  .config-input:focus { border-color: var(--magenta); }
+  .config-hint { font-size: 11px; color: var(--text-faint); margin-bottom: 20px; line-height: 1.6; background: var(--surface2); padding: 12px; border-radius: 8px; border-left: 3px solid var(--magenta); }
+  .config-hint code { color: var(--magenta-light); font-family: monospace; font-size: 11px; }
+  .config-btn { width: 100%; padding: 11px; border-radius: 8px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; background: var(--magenta); color: white; transition: all var(--transition); font-family: 'Inter', sans-serif; }
+  .config-btn:hover { background: var(--magenta-light); }
+  .config-error { font-size: 12px; color: #ef4444; margin-top: 10px; display: none; }
+
+  /* VIEWS */
+  .view { display: none; animation: fadeIn 0.3s ease; }
+  .view.active { display: block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* STAT CARDS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--card-r); padding: 16px; position: relative; overflow: hidden; transition: border-color var(--transition), transform var(--transition); }
+  .stat-card:hover { border-color: var(--magenta); transform: translateY(-2px); }
+  .stat-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:var(--accent-color,var(--magenta)); opacity:0.6; }
+  .stat-card.amber{--accent-color:var(--amber)} .stat-card.teal{--accent-color:var(--teal)} .stat-card.green{--accent-color:var(--green)} .stat-card.purple{--accent-color:var(--purple)}
+  .stat-value { font-family:'Space Grotesk',sans-serif; font-size:28px; font-weight:700; line-height:1; margin-bottom:4px; }
+  .stat-label { font-size:11px; color:var(--text-muted); font-weight:500; letter-spacing:0.3px; }
+  .stat-icon { position:absolute; top:14px; right:14px; font-size:20px; opacity:0.35; }
+
+  /* FILTERS */
+  .filter-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
+  .filter-select { background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:12px; font-family:'Inter',sans-serif; padding:7px 10px; outline:none; cursor:pointer; transition:border-color var(--transition); }
+  .filter-select:focus { border-color:var(--magenta); }
+  .filter-label { font-size:11px; color:var(--text-muted); font-weight:600; letter-spacing:0.5px; text-transform:uppercase; white-space:nowrap; }
+  .btn { padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600; border:none; cursor:pointer; transition:all var(--transition); font-family:'Inter',sans-serif; }
+  .btn-ghost { background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); }
+  .btn-ghost:hover { color:var(--text); border-color:var(--magenta); }
+
+  /* TABLE */
+  .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--card-r); overflow:hidden; }
+  .table-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .table-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; }
+  .table-count { font-size:11px; color:var(--text-muted); }
+  .data-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .data-table th { background:var(--surface2); padding:10px 14px; text-align:left; font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); border-bottom:1px solid var(--border); cursor:pointer; user-select:none; white-space:nowrap; }
+  .data-table th:hover { color:var(--magenta-light); }
+  .data-table td { padding:10px 14px; border-bottom:1px solid rgba(42,51,71,0.5); vertical-align:top; line-height:1.5; }
+  .data-table tr:last-child td { border-bottom:none; }
+  .data-table tr:hover td { background:var(--magenta-soft); }
+
+  /* BADGES */
+  .badge { display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:600; white-space:nowrap; margin:2px 2px 2px 0; }
+  .badge-magenta { background:var(--magenta-glow); color:var(--magenta-light); border:1px solid rgba(200,20,107,0.3); }
+  .badge-teal { background:rgba(14,165,197,0.12); color:#38bdf8; border:1px solid rgba(14,165,197,0.25); }
+  .badge-amber { background:rgba(245,158,11,0.12); color:#fbbf24; border:1px solid rgba(245,158,11,0.25); }
+  .badge-green { background:rgba(34,197,94,0.1); color:#4ade80; border:1px solid rgba(34,197,94,0.2); }
+  .badge-purple { background:rgba(139,92,246,0.1); color:#a78bfa; border:1px solid rgba(139,92,246,0.2); }
+  .badge-gray { background:var(--surface3); color:var(--text-muted); border:1px solid var(--border); }
+
+  /* FAC CARDS */
+  .fac-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+  .fac-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--card-r); padding:16px; transition:all var(--transition); cursor:pointer; }
+  .fac-card:hover { border-color:var(--magenta); transform:translateY(-2px); box-shadow:0 8px 24px rgba(200,20,107,0.1); }
+  .fac-avatar { width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,var(--magenta),var(--purple)); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:white; margin-bottom:10px; flex-shrink:0; }
+  .fac-name { font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .fac-stats { display:flex; gap:14px; margin-top:10px; }
+  .fac-stat { text-align:center; }
+  .fac-stat-val { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; color:var(--magenta-light); }
+  .fac-stat-lbl { font-size:9px; color:var(--text-muted); font-weight:600; letter-spacing:0.5px; text-transform:uppercase; }
+  .fac-blcs { margin-top:10px; display:flex; flex-wrap:wrap; gap:4px; }
+
+  /* BLC CARDS */
+  .blc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+  .blc-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--card-r); overflow:hidden; transition:all var(--transition); cursor:pointer; }
+  .blc-card:hover { border-color:var(--teal); transform:translateY(-2px); }
+  .blc-header { padding:14px 16px 10px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .blc-name { font-family:'Space Grotesk',sans-serif; font-size:13px; font-weight:600; }
+  .blc-body { padding:12px 16px; }
+  .blc-row { display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px; }
+  .blc-row-label { color:var(--text-muted); }
+  .blc-row-val { font-weight:600; }
+  .blc-bar-wrap { height:4px; background:var(--surface3); border-radius:2px; margin-top:8px; overflow:hidden; }
+  .blc-bar { height:100%; background:linear-gradient(90deg,var(--teal),var(--magenta)); border-radius:2px; transition:width 0.8s cubic-bezier(0.4,0,0.2,1); }
+
+  /* DATE CARDS */
+  .date-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; }
+  .date-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; transition:all var(--transition); }
+  .date-card:hover { border-color:var(--amber); }
+  .date-header { background:var(--surface2); padding:8px 12px; font-family:'Space Grotesk',sans-serif; font-size:12px; font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+  .date-busy-count { font-size:10px; color:var(--magenta-light); font-weight:700; }
+  .date-sessions { padding:8px 12px; font-size:11px; color:var(--text-muted); max-height:120px; overflow-y:auto; }
+  .date-session-item { padding:3px 0; border-bottom:1px solid rgba(42,51,71,0.3); display:flex; gap:6px; }
+  .date-session-item:last-child { border-bottom:none; }
+
+  /* FREE / MUTUAL */
+  .free-panel { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .free-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--card-r); overflow:hidden; }
+  .free-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+  .free-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); flex-shrink:0; }
+  .free-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; }
+  .free-list { padding:12px 18px; max-height:400px; overflow-y:auto; }
+  .free-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid rgba(42,51,71,0.4); font-size:12px; }
+  .free-item:last-child { border-bottom:none; }
+  .mutual-section { grid-column:1/-1; background:var(--surface); border:1px solid var(--border); border-radius:var(--card-r); overflow:hidden; }
+  .mutual-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; padding:14px 18px; }
+  .mutual-slot { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:11px; transition:all var(--transition); }
+  .mutual-slot.has-free { border-color:rgba(34,197,94,0.4); background:rgba(34,197,94,0.05); }
+  .mutual-slot.has-free:hover { border-color:var(--green); }
+  .mutual-date { font-weight:700; font-size:13px; font-family:'Space Grotesk',sans-serif; margin-bottom:4px; }
+  .mutual-count { color:var(--green); font-weight:600; }
+
+  /* MODAL */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
+  .modal-overlay.open { display:flex; animation:fadeIn 0.2s ease; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:680px; max-height:85vh; overflow:hidden; display:flex; flex-direction:column; }
+  .modal-head { padding:20px 24px 16px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .modal-title { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; }
+  .modal-sub { font-size:12px; color:var(--text-muted); margin-top:2px; }
+  .modal-close { width:32px; height:32px; border-radius:8px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all var(--transition); }
+  .modal-close:hover { color:var(--text); background:var(--surface3); }
+  .modal-body { padding:20px 24px; overflow-y:auto; flex:1; }
+
+  /* MOBILE */
+  .hamburger { display:none; width:36px; height:36px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; cursor:pointer; align-items:center; justify-content:center; flex-direction:column; gap:4px; flex-shrink:0; }
+  .hamburger span { display:block; width:16px; height:2px; background:var(--text); border-radius:1px; transition:all var(--transition); }
+  .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+
+  /* MISC */
+  .section-title { font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+  .empty-state { text-align:center; padding:48px 20px; color:var(--text-muted); }
+  .empty-icon { font-size:40px; margin-bottom:12px; opacity:0.5; }
+  .empty-text { font-size:14px; font-weight:500; }
+  .empty-sub { font-size:12px; margin-top:4px; }
+  .mini-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:8px; }
+  .mini-table th { padding:6px 10px; background:var(--surface2); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-muted); text-align:left; }
+  .mini-table td { padding:7px 10px; border-bottom:1px solid rgba(42,51,71,0.4); }
+  .mini-table tr:last-child td { border-bottom:none; }
+  .mini-table tr:hover td { background:var(--magenta-soft); }
+  ::-webkit-scrollbar { width:4px; height:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:2px; }
+  .pagination { display:flex; align-items:center; justify-content:center; gap:6px; padding:14px; border-top:1px solid var(--border); }
+  .page-btn { width:30px; height:30px; border-radius:6px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all var(--transition); font-family:'Inter',sans-serif; }
+  .page-btn:hover, .page-btn.active { color:white; background:var(--magenta); border-color:var(--magenta); }
+  .page-info { font-size:11px; color:var(--text-muted); padding:0 8px; }
+
+  @media (max-width:768px) {
+    .sidebar { transform:translateX(-100%); }
+    .sidebar.open { transform:translateX(0); }
+    .sidebar-overlay.open { display:block; }
+    .main { margin-left:0; }
+    .hamburger { display:flex; }
+    .content { padding:16px; }
+    .stats-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
+    .fac-grid, .blc-grid { grid-template-columns:1fr; }
+    .free-panel { grid-template-columns:1fr; }
+    .mutual-grid { grid-template-columns:repeat(2,1fr); }
+    .search-box { width:160px; }
+  }
+  @media (max-width:480px) {
+    .stats-grid { grid-template-columns:1fr 1fr; }
+    .search-box { display:none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-logo">LLD Intelligence Portal</div>
+  <div class="loading-sub">BRAC Learning & Leadership Development</div>
+  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+  <div class="loading-step" id="loadingStep">Connecting to live data…</div>
+</div>
+
+<!-- CONFIG SCREEN -->
+<div class="config-screen hidden" id="configScreen">
+  <div class="config-card">
+    <div class="config-title">⚙️ Connect Live Data</div>
+    <div class="config-sub">
+      Paste your Google Apps Script Web App URL below. This is a one-time setup — the URL is saved in your browser and the portal fetches fresh data automatically every time it opens.
+    </div>
+    <input type="text" class="config-input" id="scriptUrlInput"
+           placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
+           oninput="clearConfigError()">
+    <div class="config-hint">
+      <strong>Step-by-step setup:</strong><br>
+      1. Go to <code>script.google.com</code> → click <strong>New project</strong><br>
+      2. Delete all default code → paste the full <code>apps_script_lld.js</code> code<br>
+      3. Click 💾 Save → then <strong>Deploy → New deployment</strong><br>
+      4. Click the ⚙️ gear next to "Select type" → choose <strong>Web app</strong><br>
+      5. Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong> (not "Anyone with Google account")<br>
+      6. Click <strong>Deploy</strong> → click <strong>Authorize access</strong> → Allow<br>
+      7. Copy the <strong>Web app URL</strong> (starts with <code>https://script.google.com/macros/s/</code>)<br>
+      8. Paste it below ↓
+    </div>
+    <button class="config-btn" onclick="saveScriptUrl()">Connect & Load Data →</button>
+    <div class="config-error" id="configError"></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="logo">
+    <div class="logo-top">LLD Intelligence</div>
+    <div class="logo-sub">BRAC Training Portal</div>
+    <div class="magenta-bar"></div>
+  </div>
+  <nav class="nav">
+    <div class="nav-group-label">Overview</div>
+    <div class="nav-item active" onclick="showView('overview',this)"><span class="nav-icon">📊</span> Dashboard</div>
+    <div class="nav-group-label">Explore</div>
+    <div class="nav-item" onclick="showView('facilitators',this)"><span class="nav-icon">👤</span> By Facilitator</div>
+    <div class="nav-item" onclick="showView('blc',this)"><span class="nav-icon">🏛️</span> By BLC</div>
+    <div class="nav-item" onclick="showView('dates',this)"><span class="nav-icon">📅</span> By Date</div>
+    <div class="nav-item" onclick="showView('sessions',this)"><span class="nav-icon">📋</span> All Sessions</div>
+    <div class="nav-group-label">Availability</div>
+    <div class="nav-item" onclick="showView('free',this)"><span class="nav-icon">✅</span> Free Facilitators</div>
+    <div class="nav-item" onclick="showView('mutual',this)"><span class="nav-icon">🔄</span> Mutual Free Days</div>
+    <div class="nav-group-label">Settings</div>
+    <div class="nav-item" onclick="showConfig()"><span class="nav-icon">⚙️</span> Data Source</div>
+  </nav>
+  <div class="sync-bar" id="syncBar">
+    <div class="sync-dot loading" id="syncDot"></div>
+    <span id="syncText">Connecting…</span>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <button class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></button>
+    <div class="page-title" id="pageTitle">Dashboard</div>
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" placeholder="Search anything…" id="globalSearch" oninput="handleGlobalSearch(this.value)">
+    </div>
+    <button class="refresh-btn" onclick="loadData(true)" id="refreshBtn">↻ Refresh</button>
+  </header>
+
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="view active" id="view-overview">
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="section-title">📈 Activity by Month</div>
+      <div class="table-wrap" style="margin-bottom:20px;"><div style="padding:16px 18px;" id="monthChart"></div></div>
+      <div class="section-title">🏆 Top 10 Facilitators</div>
+      <div class="table-wrap" style="margin-bottom:20px;">
+        <table class="data-table" id="topFacTable">
+          <thead><tr><th>Facilitator</th><th>Sessions</th><th>BLCs Covered</th><th>Programmes</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="section-title">🏛️ BLC Activity</div>
+      <div class="table-wrap">
+        <table class="data-table" id="blcSummaryTable">
+          <thead><tr><th>BLC / Venue</th><th>Total Sessions</th><th>Facilitators Used</th><th>Programmes</th><th>Participants</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FACILITATORS -->
+    <div class="view" id="view-facilitators">
+      <div class="filter-bar">
+        <span class="filter-label">Programme:</span>
+        <select class="filter-select" id="facProgFilter" onchange="renderFacilitators()"><option value="">All</option></select>
+        <span class="filter-label">Month:</span>
+        <select class="filter-select" id="facMonthFilter" onchange="renderFacilitators()"><option value="">All</option></select>
+        <span class="filter-label">BLC:</span>
+        <select class="filter-select" id="facBlcFilter" onchange="renderFacilitators()"><option value="">All</option></select>
+        <button class="btn btn-ghost" onclick="clearFilters('facProgFilter','facMonthFilter','facBlcFilter');renderFacilitators()">Clear</button>
+      </div>
+      <div class="fac-grid" id="facGrid"></div>
+    </div>
+
+    <!-- BLC -->
+    <div class="view" id="view-blc">
+      <div class="filter-bar">
+        <span class="filter-label">Month:</span>
+        <select class="filter-select" id="blcMonthFilter" onchange="renderBLCs()"><option value="">All</option></select>
+        <span class="filter-label">Programme:</span>
+        <select class="filter-select" id="blcProgFilter" onchange="renderBLCs()"><option value="">All</option></select>
+      </div>
+      <div class="blc-grid" id="blcGrid"></div>
+    </div>
+
+    <!-- DATES -->
+    <div class="view" id="view-dates">
+      <div class="filter-bar">
+        <span class="filter-label">Month:</span>
+        <select class="filter-select" id="dateMonthFilter" onchange="renderDates()"><option value="">All</option></select>
+        <span class="filter-label">BLC:</span>
+        <select class="filter-select" id="dateBlcFilter" onchange="renderDates()"><option value="">All</option></select>
+      </div>
+      <div class="date-grid" id="dateGrid"></div>
+    </div>
+
+    <!-- SESSIONS -->
+    <div class="view" id="view-sessions">
+      <div class="filter-bar">
+        <select class="filter-select" id="sesMonthFilter" onchange="renderSessions()"><option value="">All Months</option></select>
+        <select class="filter-select" id="sesBlcFilter" onchange="renderSessions()"><option value="">All BLCs</option></select>
+        <select class="filter-select" id="sesProgFilter" onchange="renderSessions()"><option value="">All Programmes</option></select>
+        <select class="filter-select" id="sesFacFilter" onchange="renderSessions()"><option value="">All Facilitators</option></select>
+        <button class="btn btn-ghost" onclick="clearFilters('sesMonthFilter','sesBlcFilter','sesProgFilter','sesFacFilter');renderSessions()">Clear</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">Training Sessions</div><div class="table-count" id="sesCount"></div></div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr>
+              <th onclick="sortSessions('id'">#</th>
+              <th onclick="sortSessions('monthSort')">Month</th>
+              <th onclick="sortSessions('programme')">Programme</th>
+              <th onclick="sortSessions('course')">Course</th>
+              <th onclick="sortSessions('venue')">Venue</th>
+              <th>Date</th>
+              <th>Facilitators</th>
+              <th>Count</th>
+            </tr></thead>
+            <tbody id="sesTableBody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="sesPagination"></div>
+      </div>
+    </div>
+
+    <!-- FREE -->
+    <div class="view" id="view-free">
+      <div class="filter-bar">
+        <span class="filter-label">Date:</span>
+        <input type="text" class="filter-select" id="freeDateInput" placeholder="e.g. 7 Jul" style="width:120px;" oninput="renderFree()">
+        <span class="filter-label">Month:</span>
+        <select class="filter-select" id="freeMonthFilter" onchange="renderFree()"><option value="">All</option></select>
+      </div>
+      <div class="free-panel">
+        <div class="free-card">
+          <div class="free-header"><div class="free-dot"></div><div class="free-title">Available Facilitators</div></div>
+          <div class="free-list" id="freeList"><div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">Enter a date above</div></div></div>
+        </div>
+        <div class="free-card">
+          <div class="free-header"><div class="free-dot" style="background:var(--magenta-light);box-shadow:0 0 8px var(--magenta);"></div><div class="free-title">Busy Facilitators</div></div>
+          <div class="free-list" id="busyList"><div class="empty-state"><div class="empty-icon">🔴</div><div class="empty-text">Enter a date above</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MUTUAL -->
+    <div class="view" id="view-mutual">
+      <div style="margin-bottom:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--card-r); padding:16px;">
+        <div class="section-title" style="margin-bottom:12px;">Select Facilitators to Compare</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+          <select class="filter-select" id="mutFac1" onchange="renderMutual()" style="min-width:200px;"><option value="">-- Facilitator 1 --</option></select>
+          <select class="filter-select" id="mutFac2" onchange="renderMutual()" style="min-width:200px;"><option value="">-- Facilitator 2 --</option></select>
+          <select class="filter-select" id="mutFac3" onchange="renderMutual()" style="min-width:200px;"><option value="">-- Facilitator 3 (optional) --</option></select>
+        </div>
+        <div style="font-size:12px; color:var(--text-muted);">Find days when ALL selected facilitators are simultaneously free.</div>
+      </div>
+      <div class="mutual-section">
+        <div class="free-header" style="padding:14px 18px; border-bottom:1px solid var(--border);">
+          <div class="free-dot" style="background:var(--purple); box-shadow:0 0 8px var(--purple);"></div>
+          <div class="free-title">Mutual Availability Calendar</div>
+        </div>
+        <div class="mutual-grid" id="mutualGrid">
+          <div class="empty-state" style="grid-column:1/-1; padding:40px;"><div class="empty-icon">🔄</div><div class="empty-text">Select facilitators above</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <div><div class="modal-title" id="modalTitle"></div><div class="modal-sub" id="modalSub"></div></div>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ========== CONFIG ==========
+const STORAGE_KEY = 'lld_script_url';
+const CACHE_KEY = 'lld_data_cache';
+const CACHE_TS_KEY = 'lld_cache_ts';
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+const MONTH_ORDER = {
+  'July 2024':1, 'August 2024':2, 'September 2024':3, 'October 2024':4,
+  'December 2024':5, 'August 2025':6, 'September 2025':7,
+  'November 2025':8, 'December 2025':9, 'July 2026':10
+};
+
+// ========== STATE ==========
+let RAW_DATA = [];
+let allFacilitators = [], allBLCs = [], allMonths = [], allProgrammes = [];
+let facSessionMap = {}, blcSessionMap = {};
+let currentView = 'overview';
+let sesPage = 1, sesSortKey = 'monthSort', sesSortDir = 1;
+let filteredSessions = [];
+const SES_PER_PAGE = 25;
+
+// ========== STARTUP ==========
+async function startup() {
+  const url = localStorage.getItem(STORAGE_KEY);
+  if (!url) {
+    showConfigScreen();
+    return;
+  }
+  await loadData(false);
+}
+
+function showConfigScreen() {
+  document.getElementById('loadingScreen').classList.add('hidden');
+  document.getElementById('configScreen').classList.remove('hidden');
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) document.getElementById('scriptUrlInput').value = saved;
+}
+
+async function saveScriptUrl() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url.includes('script.google.com')) {
+    showConfigError('Please paste a valid Google Apps Script URL.');
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY, url);
+  localStorage.removeItem(CACHE_KEY);
+  localStorage.removeItem(CACHE_TS_KEY);
+  document.getElementById('configScreen').classList.add('hidden');
+  document.getElementById('loadingScreen').classList.remove('hidden');
+  await loadData(true);
+}
+
+function showConfigError(msg) {
+  const el = document.getElementById('configError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearConfigError() { document.getElementById('configError').style.display = 'none'; }
+function showConfig() { showConfigScreen(); }
+
+// ========== DATA LOADING ==========
+async function loadData(forceRefresh = false) {
+  const loadingScreen = document.getElementById('loadingScreen');
+  const loadingStep = document.getElementById('loadingStep');
+  const syncDot = document.getElementById('syncDot');
+  const syncText = document.getElementById('syncText');
+
+  // Check cache
+  if (!forceRefresh) {
+    const cached = localStorage.getItem(CACHE_KEY);
+    const ts = parseInt(localStorage.getItem(CACHE_TS_KEY) || '0');
+    if (cached && Date.now() - ts < CACHE_TTL) {
+      try {
+        RAW_DATA = JSON.parse(cached);
+        loadingStep.textContent = 'Loading from cache…';
+        await delay(300);
+        initApp();
+        loadingScreen.classList.add('hidden');
+        setSyncStatus('ok', `Cached · ${timeAgo(ts)}`);
+        return;
+      } catch(e) {}
+    }
+  }
+
+  const url = localStorage.getItem(STORAGE_KEY);
+  if (!url) { showConfigScreen(); return; }
+
+  syncDot.className = 'sync-dot loading';
+  syncText.textContent = 'Fetching live data…';
+  loadingStep.textContent = 'Connecting to Google Sheets…';
+
+  try {
+    loadingStep.textContent = 'Fetching training records…';
+    const json = await fetchViaJSONP(url);
+    if (json.status !== 'ok') throw new Error(json.message || 'Script error');
+
+    RAW_DATA = json.data || [];
+    localStorage.setItem(CACHE_KEY, JSON.stringify(RAW_DATA));
+    localStorage.setItem(CACHE_TS_KEY, Date.now().toString());
+
+    loadingStep.textContent = `Loaded ${RAW_DATA.length} sessions ✓`;
+    await delay(400);
+    initApp();
+    loadingScreen.classList.add('hidden');
+    setSyncStatus('ok', `Live · ${new Date().toLocaleTimeString()}`);
+  } catch(err) {
+    loadingStep.textContent = '⚠ ' + err.message;
+    // Show helpful debug info
+    console.error('LLD Portal fetch error:', err);
+    // Try cache as fallback
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      await delay(800);
+      RAW_DATA = JSON.parse(cached);
+      initApp();
+      loadingScreen.classList.add('hidden');
+      setSyncStatus('error', 'Offline — using cached data');
+    } else {
+      await delay(1000);
+      loadingScreen.classList.add('hidden');
+      showConfigScreen();
+    }
+  }
+}
+
+function setSyncStatus(type, text) {
+  const dot = document.getElementById('syncDot');
+  dot.className = 'sync-dot' + (type === 'loading' ? ' loading' : '');
+  dot.style.background = type === 'ok' ? 'var(--green)' : type === 'error' ? '#ef4444' : 'var(--amber)';
+  dot.style.boxShadow = type === 'ok' ? '0 0 8px var(--green)' : type === 'error' ? '0 0 8px #ef4444' : '';
+  document.getElementById('syncText').textContent = text;
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  return Math.floor(diff/3600000) + 'h ago';
+}
+
+// ========== INIT ==========
+// Normalize any cached data with old short month labels
+function normalizeMonthLabel(label) {
+  const fix = {
+    'Jul 2024':'July 2024','Aug 2024':'August 2024','Sep 2024':'September 2024',
+    'Oct 2024':'October 2024','Dec 2024':'December 2024','Aug 2025':'August 2025',
+    'Sep 2025':'September 2025','Nov 2025':'November 2025','Dec 2025':'December 2025',
+    'Jul 2026':'July 2026'
+  };
+  return fix[label] || label;
+}
+
+function initApp() {
+  // Normalize month labels in case of cached old-format data
+RAW_DATA.forEach(r => { r.monthLabel = normalizeMonthLabel(r.monthLabel); });
+allFacilitators = [...new Set(RAW_DATA.flatMap(r => r.facilitators))].sort();
+  allBLCs = [...new Set(RAW_DATA.map(r => r.venue))].sort();
+  allMonths = [...new Set(RAW_DATA.map(r => r.monthLabel))].sort((a,b)=>(MONTH_ORDER[a]||99)-(MONTH_ORDER[b]||99));
+  allProgrammes = [...new Set(RAW_DATA.map(r => r.programme))].sort();
+
+  facSessionMap = {}; blcSessionMap = {};
+  RAW_DATA.forEach(row => {
+    row.facilitators.forEach(f => {
+      if (!facSessionMap[f]) facSessionMap[f] = [];
+      facSessionMap[f].push(row);
+    });
+    if (!blcSessionMap[row.venue]) blcSessionMap[row.venue] = [];
+    blcSessionMap[row.venue].push(row);
+  });
+
+  populateFilters();
+  renderOverview();
+  renderFacilitators();
+  renderBLCs();
+  renderDates();
+  renderSessions();
+  populateMutualDropdowns();
+}
+
+function populateFilters() {
+  const defs = {
+    facProgFilter: allProgrammes, facMonthFilter: allMonths, facBlcFilter: allBLCs,
+    blcMonthFilter: allMonths, blcProgFilter: allProgrammes,
+    dateMonthFilter: allMonths, dateBlcFilter: allBLCs,
+    sesMonthFilter: allMonths, sesBlcFilter: allBLCs, sesProgFilter: allProgrammes, sesFacFilter: allFacilitators,
+    freeMonthFilter: allMonths,
+  };
+  for (const [id, arr] of Object.entries(defs)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const first = el.options[0].text;
+    el.innerHTML = `<option value="">${first}</option>`;
+    arr.forEach(v => { const o = document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
+  }
+}
+
+function clearFilters(...ids) { ids.forEach(id => { const el = document.getElementById(id); if(el) el.value=''; }); }
+
+// ========== OVERVIEW ==========
+function renderOverview() {
+  const totalSessions = RAW_DATA.length;
+  const totalParticipants = RAW_DATA.reduce((s,r)=>s+(parseInt(r.count)||parseInt(r.actual)||0),0);
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${totalSessions}</div><div class="stat-label">Total Sessions</div></div>
+    <div class="stat-card amber"><div class="stat-icon">👤</div><div class="stat-value">${allFacilitators.length}</div><div class="stat-label">Facilitators</div></div>
+    <div class="stat-card teal"><div class="stat-icon">🏛️</div><div class="stat-value">${allBLCs.filter(b=>b.startsWith('BLC')).length}</div><div class="stat-label">BLC Venues</div></div>
+    <div class="stat-card green"><div class="stat-icon">📁</div><div class="stat-value">${allProgrammes.length}</div><div class="stat-label">Programmes</div></div>
+    <div class="stat-card purple"><div class="stat-icon">👥</div><div class="stat-value">${totalParticipants.toLocaleString()}</div><div class="stat-label">Participants</div></div>
+  `;
+
+  const byMonth = {};
+  allMonths.forEach(m=>byMonth[m]=0);
+  RAW_DATA.forEach(r=>byMonth[r.monthLabel]=(byMonth[r.monthLabel]||0)+1);
+  const maxV = Math.max(...Object.values(byMonth),1);
+  document.getElementById('monthChart').innerHTML = `
+    <div style="display:flex;align-items:flex-end;gap:8px;height:80px;padding:0 4px;">
+      ${allMonths.map(m=>`
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;" onclick="filterByMonth('${m}')" title="${m}: ${byMonth[m]} sessions">
+          <div style="font-size:10px;color:var(--magenta-light);font-weight:700;">${byMonth[m]}</div>
+          <div style="width:100%;background:linear-gradient(to top,var(--magenta),var(--purple));border-radius:4px 4px 0 0;height:${Math.round((byMonth[m]/maxV)*60)+4}px;min-height:4px;transition:opacity 0.2s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'"></div>
+          <div style="font-size:9px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);height:40px;overflow:hidden;">${m}</div>
+        </div>
+      `).join('')}
+    </div>`;
+
+  const facStats = allFacilitators.map(f=>{
+    const s=facSessionMap[f]||[];
+    return {name:f,sessions:s.length,blcs:new Set(s.map(x=>x.venue)).size,programmes:new Set(s.map(x=>x.programme)).size};
+  }).sort((a,b)=>b.sessions-a.sessions).slice(0,10);
+
+  document.querySelector('#topFacTable tbody').innerHTML = facStats.map(f=>`
+    <tr onclick="openFacModal('${f.name.replace(/'/g,"\'")}')" style="cursor:pointer;">
+      <td style="font-weight:600;">${f.name}</td>
+      <td><span class="badge badge-magenta">${f.sessions}</span></td>
+      <td><span class="badge badge-teal">${f.blcs}</span></td>
+      <td><span class="badge badge-purple">${f.programmes}</span></td>
+    </tr>`).join('');
+
+  const blcStats = allBLCs.filter(b=>b!=='Online').map(b=>{
+    const s=blcSessionMap[b]||[];
+    return {blc:b,sessions:s.length,facs:new Set(s.flatMap(x=>x.facilitators)).size,progs:new Set(s.map(x=>x.programme)).size,pts:s.reduce((t,r)=>t+(parseInt(r.count)||parseInt(r.actual)||0),0)};
+  }).sort((a,b)=>b.sessions-a.sessions);
+
+  document.querySelector('#blcSummaryTable tbody').innerHTML = blcStats.map(b=>`
+    <tr onclick="openBLCModal('${b.blc.replace(/'/g,"\'")}')" style="cursor:pointer;">
+      <td style="font-weight:600;">${b.blc}</td>
+      <td><span class="badge badge-teal">${b.sessions}</span></td>
+      <td><span class="badge badge-amber">${b.facs}</span></td>
+      <td><span class="badge badge-purple">${b.progs}</span></td>
+      <td>${b.pts>0?`<span class="badge badge-green">${b.pts}</span>`:'<span style="color:var(--text-faint)">—</span>'}</td>
+    </tr>`).join('');
+}
+
+function filterByMonth(month) {
+  showView('sessions', document.querySelector('[onclick*="sessions"]'));
+  setTimeout(()=>{ document.getElementById('sesMonthFilter').value=month; renderSessions(); },100);
+}
+
+// ========== FACILITATORS ==========
+function renderFacilitators() {
+  const prog=document.getElementById('facProgFilter').value;
+  const month=document.getElementById('facMonthFilter').value;
+  const blc=document.getElementById('facBlcFilter').value;
+  const filtered=RAW_DATA.filter(r=>(!prog||r.programme===prog)&&(!month||r.monthLabel===month)&&(!blc||r.venue===blc));
+  const facMap={};
+  filtered.forEach(r=>r.facilitators.forEach(f=>{
+    if(!facMap[f])facMap[f]={sessions:[],blcs:new Set(),progs:new Set(),months:new Set()};
+    facMap[f].sessions.push(r); facMap[f].blcs.add(r.venue); facMap[f].progs.add(r.programme); facMap[f].months.add(r.monthLabel);
+  }));
+  const sorted=Object.entries(facMap).sort((a,b)=>b[1].sessions.length-a[1].sessions.length);
+  if(!sorted.length){document.getElementById('facGrid').innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👤</div><div class="empty-text">No facilitators found</div></div>`;return;}
+  document.getElementById('facGrid').innerHTML=sorted.map(([name,stats])=>{
+    const init=name.split(' ').filter(w=>/^[A-Z]/i.test(w)).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    const blcArr=[...stats.blcs].slice(0,4);
+    return `<div class="fac-card" onclick="openFacModal('${name.replace(/'/g,"\'")}')">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div class="fac-avatar">${init||name[0]}</div>
+        <div><div class="fac-name">${name}</div><div style="font-size:10px;color:var(--text-muted);">${stats.progs.size} programme${stats.progs.size!==1?'s':''}</div></div>
+      </div>
+      <div class="fac-stats">
+        <div class="fac-stat"><div class="fac-stat-val">${stats.sessions.length}</div><div class="fac-stat-lbl">Sessions</div></div>
+        <div class="fac-stat"><div class="fac-stat-val">${stats.blcs.size}</div><div class="fac-stat-lbl">BLCs</div></div>
+        <div class="fac-stat"><div class="fac-stat-val">${stats.months.size}</div><div class="fac-stat-lbl">Months</div></div>
+      </div>
+      <div class="fac-blcs">
+        ${blcArr.map(b=>`<span class="badge badge-gray">${b.replace('BLC ','')}</span>`).join('')}
+        ${stats.blcs.size>4?`<span class="badge badge-gray">+${stats.blcs.size-4}</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ========== BLC ==========
+function renderBLCs() {
+  const month=document.getElementById('blcMonthFilter').value;
+  const prog=document.getElementById('blcProgFilter').value;
+  const filtered=RAW_DATA.filter(r=>(!month||r.monthLabel===month)&&(!prog||r.programme===prog));
+  const blcMap={};
+  filtered.forEach(r=>{
+    if(!blcMap[r.venue])blcMap[r.venue]={sessions:[],facs:new Set(),progs:new Set()};
+    blcMap[r.venue].sessions.push(r); r.facilitators.forEach(f=>blcMap[r.venue].facs.add(f)); blcMap[r.venue].progs.add(r.programme);
+  });
+  const sorted=Object.entries(blcMap).sort((a,b)=>b[1].sessions.length-a[1].sessions.length);
+  const maxSes=sorted[0]?.[1]?.sessions.length||1;
+  document.getElementById('blcGrid').innerHTML=sorted.map(([blc,stats])=>{
+    const pts=stats.sessions.reduce((s,r)=>s+(parseInt(r.count)||parseInt(r.actual)||0),0);
+    const pct=Math.round((stats.sessions.length/maxSes)*100);
+    return `<div class="blc-card" onclick="openBLCModal('${blc.replace(/'/g,"\'")}')">
+      <div class="blc-header"><div class="blc-name">${blc}</div><span class="badge badge-teal">${stats.sessions.length} sessions</span></div>
+      <div class="blc-body">
+        <div class="blc-row"><span class="blc-row-label">Facilitators</span><span class="blc-row-val">${stats.facs.size}</span></div>
+        <div class="blc-row"><span class="blc-row-label">Programmes</span><span class="blc-row-val">${stats.progs.size}</span></div>
+        ${pts>0?`<div class="blc-row"><span class="blc-row-label">Participants</span><span class="blc-row-val">${pts}</span></div>`:''}
+        <div class="blc-bar-wrap"><div class="blc-bar" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ========== DATES ==========
+function renderDates() {
+  const month=document.getElementById('dateMonthFilter').value;
+  const blc=document.getElementById('dateBlcFilter').value;
+  const filtered=RAW_DATA.filter(r=>(!month||r.monthLabel===month)&&(!blc||r.venue===blc));
+  const dateMap={};
+  filtered.forEach(r=>{
+    const key=r.from?r.from.trim():'?';
+    if(!dateMap[key])dateMap[key]=[];
+    dateMap[key].push(r);
+  });
+  const sorted=Object.entries(dateMap).sort((a,b)=>(parseInt(a[0])||0)-(parseInt(b[0])||0));
+  if(!sorted.length){document.getElementById('dateGrid').innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📅</div><div class="empty-text">No sessions found</div></div>`;return;}
+  document.getElementById('dateGrid').innerHTML=sorted.map(([date,sessions])=>{
+    const facs=new Set(sessions.flatMap(s=>s.facilitators));
+    return `<div class="date-card">
+      <div class="date-header"><span>${date}</span><span class="date-busy-count">${sessions.length} · ${facs.size} facs</span></div>
+      <div class="date-sessions">
+        ${sessions.slice(0,6).map(s=>`<div class="date-session-item"><span class="badge badge-gray">${s.venue.replace('BLC ','')}</span><span style="color:var(--text);font-weight:500;">${s.course}</span></div>`).join('')}
+        ${sessions.length>6?`<div style="text-align:center;color:var(--text-faint);font-size:10px;padding:4px 0;">+${sessions.length-6} more</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ========== SESSIONS ==========
+function renderSessions() {
+  const month=document.getElementById('sesMonthFilter').value;
+  const blc=document.getElementById('sesBlcFilter').value;
+  const prog=document.getElementById('sesProgFilter').value;
+  const fac=document.getElementById('sesFacFilter').value;
+  const q=document.getElementById('globalSearch').value.toLowerCase();
+  filteredSessions=RAW_DATA.filter(r=>
+    (!month||r.monthLabel===month)&&(!blc||r.venue===blc)&&(!prog||r.programme===prog)&&
+    (!fac||r.facilitators.includes(fac))&&
+    (!q||r.course.toLowerCase().includes(q)||r.facilitators.some(f=>f.toLowerCase().includes(q))||r.venue.toLowerCase().includes(q)||r.programme.toLowerCase().includes(q))
+  ).sort((a,b)=>{
+    let va=a[sesSortKey],vb=b[sesSortKey];
+    if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}
+    return sesSortDir*(va>vb?1:va<vb?-1:0);
+  });
+  sesPage=1; renderSessionsPage();
+}
+
+function renderSessionsPage() {
+  const start=(sesPage-1)*SES_PER_PAGE;
+  const page=filteredSessions.slice(start,start+SES_PER_PAGE);
+  const total=filteredSessions.length;
+  document.getElementById('sesCount').textContent=`${total} sessions`;
+  document.getElementById('sesTableBody').innerHTML=page.map(r=>`
+    <tr>
+      <td style="color:var(--text-faint);">${r.id}</td>
+      <td><span class="badge badge-purple">${r.monthLabel}</span></td>
+      <td style="font-size:11px;max-width:120px;">${r.programme}</td>
+      <td style="font-weight:500;max-width:160px;">${r.course}</td>
+      <td><span class="badge badge-teal">${r.venue.replace('BLC ','')}</span></td>
+      <td style="white-space:nowrap;font-size:11px;">${r.from}${r.to&&r.to!==r.from?` – ${r.to}`:''}</td>
+      <td>${r.facilitators.map(f=>`<span class="badge badge-magenta">${f}</span>`).join(' ')}</td>
+      <td>${r.count||r.actual||'—'}</td>
+    </tr>`).join('')||`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No sessions match</div></div></td></tr>`;
+
+  const totalPages=Math.ceil(total/SES_PER_PAGE);
+  let pag='';
+  if(totalPages>1){
+    pag+=`<button class="page-btn" onclick="goPage(${sesPage-1})" ${sesPage===1?'disabled':''}>‹</button>`;
+    const range=[];
+    for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-sesPage)<=2)range.push(i);else if(range[range.length-1]!=='...')range.push('...');}
+    range.forEach(p=>{if(p==='...')pag+=`<span class="page-info">…</span>`;else pag+=`<button class="page-btn ${p===sesPage?'active':''}" onclick="goPage(${p})">${p}</button>`;});
+    pag+=`<button class="page-btn" onclick="goPage(${sesPage+1})" ${sesPage===totalPages?'disabled':''}>›</button>`;
+    pag+=`<span class="page-info">${start+1}–${Math.min(start+SES_PER_PAGE,total)} of ${total}</span>`;
+  }
+  document.getElementById('sesPagination').innerHTML=pag;
+}
+
+function goPage(p){const tp=Math.ceil(filteredSessions.length/SES_PER_PAGE);sesPage=Math.max(1,Math.min(p,tp));renderSessionsPage();}
+function sortSessions(key){if(sesSortKey===key)sesSortDir*=-1;else{sesSortKey=key;sesSortDir=1;}renderSessions();}
+
+// ========== FREE ==========
+function getDaysInRange(from, to, monthLabel) {
+  const mMap={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+  const yearMatch=monthLabel?monthLabel.match(/\d{4}/):null;
+  const year=yearMatch?parseInt(yearMatch[0]):2026;
+  function parseDate(s){
+    if(!s)return null;
+    const m=s.trim().match(/(\d+)\s+(\w+)/);
+    if(!m)return null;
+    return new Date(year,mMap[m[2].slice(0,3)]-1,parseInt(m[1]));
+  }
+  const start=parseDate(from),end=parseDate(to);
+  if(!start||!end)return from?[from.trim()]:[];
+  const days=[];
+  let cur=new Date(start);
+  while(cur<=end){
+    const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][cur.getMonth()];
+    days.push(`${cur.getDate()} ${mo}`);
+    cur.setDate(cur.getDate()+1);
+  }
+  return days.length?days:[from.trim()];
+}
+
+function renderFree() {
+  const dateInput=document.getElementById('freeDateInput').value.trim().toLowerCase();
+  const month=document.getElementById('freeMonthFilter').value;
+  if(!dateInput){
+    document.getElementById('freeList').innerHTML=`<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">Enter a date above</div></div>`;
+    document.getElementById('busyList').innerHTML=`<div class="empty-state"><div class="empty-icon">🔴</div><div class="empty-text">Enter a date above</div></div>`;
+    return;
+  }
+  const relevant=RAW_DATA.filter(r=>!month||r.monthLabel===month);
+  const busyFacs=new Set();
+  const busySessions=[];
+  relevant.forEach(r=>{
+    const days=getDaysInRange(r.from,r.to,r.monthLabel);
+    if(days.some(d=>d.toLowerCase().includes(dateInput)||dateInput.includes(d.toLowerCase().split(' ')[0]))){
+      r.facilitators.forEach(f=>busyFacs.add(f));
+      busySessions.push(r);
+    }
+  });
+  const relevantFacs=[...new Set(relevant.flatMap(r=>r.facilitators))].sort();
+  const freeFacs=relevantFacs.filter(f=>!busyFacs.has(f));
+  document.getElementById('freeList').innerHTML=freeFacs.length?freeFacs.map(f=>`
+    <div class="free-item">
+      <div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--green),var(--teal));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:white;flex-shrink:0;">${f.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+      <span>${f}</span>
+    </div>`).join(''):`<div class="empty-state"><div class="empty-icon">😅</div><div class="empty-text">All busy on this date!</div></div>`;
+  document.getElementById('busyList').innerHTML=busySessions.length?busySessions.map(r=>`
+    <div class="free-item" style="flex-direction:column;align-items:flex-start;gap:4px;">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <span class="badge badge-teal">${r.venue.replace('BLC ','')}</span>
+        <span style="font-weight:600;font-size:11px;">${r.course}</span>
+      </div>
+      <div>${r.facilitators.map(f=>`<span class="badge badge-magenta">${f}</span>`).join(' ')}</div>
+    </div>`).join(''):`<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">No sessions found on this date</div></div>`;
+}
+
+// ========== MUTUAL ==========
+function populateMutualDropdowns() {
+  ['mutFac1','mutFac2','mutFac3'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    const ph=el.options[0].text;
+    el.innerHTML=`<option value="">${ph}</option>`;
+    allFacilitators.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;el.appendChild(o);});
+  });
+}
+
+function renderMutual() {
+  const f1=document.getElementById('mutFac1').value;
+  const f2=document.getElementById('mutFac2').value;
+  const f3=document.getElementById('mutFac3').value;
+  const selected=[f1,f2,f3].filter(Boolean);
+  if(selected.length<2){document.getElementById('mutualGrid').innerHTML=`<div class="empty-state" style="grid-column:1/-1;padding:40px;"><div class="empty-icon">🔄</div><div class="empty-text">Select at least 2 facilitators</div></div>`;return;}
+  const facBusy={};
+  selected.forEach(f=>{
+    facBusy[f]=new Set();
+    RAW_DATA.forEach(r=>{
+      if(r.facilitators.includes(f)){
+        getDaysInRange(r.from,r.to,r.monthLabel).forEach(d=>facBusy[f].add(d+'|'+r.monthLabel));
+      }
+    });
+  });
+  const allDates=new Set();
+  RAW_DATA.forEach(r=>getDaysInRange(r.from,r.to,r.monthLabel).forEach(d=>allDates.add(d+'|'+r.monthLabel)));
+  const slots=[...allDates].map(dk=>{
+    const [date,month]=dk.split('|');
+    const busyCount=selected.filter(f=>facBusy[f].has(dk)).length;
+    return {dk,date,month,busyCount,allFree:busyCount===0};
+  }).sort((a,b)=>{
+    if((MONTH_ORDER[a.month]||99)!==(MONTH_ORDER[b.month]||99))return(MONTH_ORDER[a.month]||99)-(MONTH_ORDER[b.month]||99);
+    return parseInt(a.date)-parseInt(b.date);
+  });
+  const mutualFree=slots.filter(s=>s.allFree);
+  if(!mutualFree.length){document.getElementById('mutualGrid').innerHTML=`<div class="empty-state" style="grid-column:1/-1;padding:40px;"><div class="empty-icon">😔</div><div class="empty-text">No mutual free days found</div></div>`;return;}
+  const byMonth={};
+  mutualFree.forEach(s=>{if(!byMonth[s.month])byMonth[s.month]=[];byMonth[s.month].push(s.date);});
+  document.getElementById('mutualGrid').innerHTML=Object.entries(byMonth).map(([month,dates])=>`
+    <div class="mutual-slot has-free">
+      <div class="mutual-date">${month}</div>
+      <div class="mutual-count">✅ ${dates.length} free day${dates.length!==1?'s':''}</div>
+      <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">${dates.slice(0,5).join(', ')}${dates.length>5?' …':''}</div>
+    </div>`).join('')+`
+    <div class="mutual-slot" style="grid-column:1/-1;background:rgba(34,197,94,0.05);border-color:rgba(34,197,94,0.3);">
+      <div style="font-size:11px;color:var(--green);font-weight:600;margin-bottom:4px;">📅 All ${mutualFree.length} mutual free days</div>
+      <div>${mutualFree.map(s=>`<span class="badge badge-green" style="margin:2px;">${s.date} ${s.month}</span>`).join('')}</div>
+    </div>`;
+}
+
+// ========== MODALS ==========
+function openFacModal(name) {
+  const sessions=facSessionMap[name]||[];
+  const blcs=[...new Set(sessions.map(s=>s.venue))].sort();
+  const progs=[...new Set(sessions.map(s=>s.programme))].sort();
+  const months=[...new Set(sessions.map(s=>s.monthLabel))].sort((a,b)=>(MONTH_ORDER[a]||99)-(MONTH_ORDER[b]||99));
+  const init=name.split(' ').filter(w=>/^[A-Z]/i.test(w)).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  document.getElementById('modalTitle').innerHTML=`<div style="display:flex;align-items:center;gap:12px;"><div class="fac-avatar">${init||name[0]}</div><span>${name}</span></div>`;
+  document.getElementById('modalSub').textContent=`${sessions.length} sessions across ${blcs.length} venues`;
+  document.getElementById('modalBody').innerHTML=`
+    <div class="stats-grid" style="margin-bottom:16px;grid-template-columns:repeat(3,1fr);">
+      <div class="stat-card" style="padding:12px;"><div class="stat-value" style="font-size:22px;">${sessions.length}</div><div class="stat-label">Sessions</div></div>
+      <div class="stat-card teal" style="padding:12px;"><div class="stat-value" style="font-size:22px;">${blcs.length}</div><div class="stat-label">BLCs</div></div>
+      <div class="stat-card purple" style="padding:12px;"><div class="stat-value" style="font-size:22px;">${months.length}</div><div class="stat-label">Months</div></div>
+    </div>
+    <div class="section-title" style="font-size:12px;margin-bottom:8px;">BLCs Covered</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px;">${blcs.map(b=>`<span class="badge badge-teal">${b}</span>`).join('')}</div>
+    <div class="section-title" style="font-size:12px;margin-bottom:8px;">Programmes</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px;">${progs.map(p=>`<span class="badge badge-purple">${p}</span>`).join('')}</div>
+    <div class="section-title" style="font-size:12px;margin-bottom:8px;">All Sessions</div>
+    <table class="mini-table">
+      <thead><tr><th>Month</th><th>Course</th><th>Venue</th><th>Date</th></tr></thead>
+      <tbody>${sessions.sort((a,b)=>(MONTH_ORDER[a.monthLabel]||99)-(MONTH_ORDER[b.monthLabel]||99)).map(s=>`
+        <tr><td><span class="badge badge-gray">${s.monthLabel}</span></td><td style="font-weight:500;">${s.course}</td><td><span class="badge badge-teal">${s.venue.replace('BLC ','')}</span></td><td style="font-size:11px;color:var(--text-muted);">${s.from}${s.to&&s.to!==s.from?` – ${s.to}`:''}</td></tr>
+      `).join('')}</tbody>
+    </table>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function openBLCModal(blc) {
+  const sessions=blcSessionMap[blc]||[];
+  const facs=[...new Set(sessions.flatMap(s=>s.facilitators))].sort();
+  const progs=[...new Set(sessions.map(s=>s.programme))].sort();
+  const pts=sessions.reduce((s,r)=>s+(parseInt(r.count)||parseInt(r.actual)||0),0);
+  document.getElementById('modalTitle').textContent=blc;
+  document.getElementById('modalSub').textContent=`${sessions.length} sessions · ${facs.length} facilitators`;
+  document.getElementById('modalBody').innerHTML=`
+    <div class="stats-grid" style="margin-bottom:16px;grid-template-columns:repeat(3,1fr);">
+      <div class="stat-card" style="padding:12px;"><div class="stat-value" style="font-size:22px;">${sessions.length}</div><div class="stat-label">Sessions</div></div>
+      <div class="stat-card amber" style="padding:12px;"><div class="stat-value" style="font-size:22px;">${facs.length}</div><div class="stat-label">Facilitators</div></div>
+      <div class="stat-card green" style="padding:12px;"><div class="stat-value" style="font-size:22px;">${pts||'—'}</div><div class="stat-label">Participants</div></div>
+    </div>
+    <div class="section-title" style="font-size:12px;margin-bottom:8px;">Facilitators</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px;">${facs.map(f=>`<span class="badge badge-magenta">${f}</span>`).join('')}</div>
+    <div class="section-title" style="font-size:12px;margin-bottom:8px;">Programmes</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px;">${progs.map(p=>`<span class="badge badge-purple">${p}</span>`).join('')}</div>
+    <div class="section-title" style="font-size:12px;margin-bottom:8px;">All Sessions</div>
+    <table class="mini-table">
+      <thead><tr><th>Month</th><th>Course</th><th>Date</th><th>Count</th></tr></thead>
+      <tbody>${sessions.sort((a,b)=>(MONTH_ORDER[a.monthLabel]||99)-(MONTH_ORDER[b.monthLabel]||99)).map(s=>`
+        <tr><td><span class="badge badge-gray">${s.monthLabel}</span></td><td style="font-weight:500;">${s.course}</td><td style="font-size:11px;color:var(--text-muted);">${s.from}${s.to&&s.to!==s.from?` – ${s.to}`:''}</td><td>${s.count||s.actual||'—'}</td></tr>
+      `).join('')}</tbody>
+    </table>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal(e){if(e.target===document.getElementById('modalOverlay'))closeModalDirect();}
+function closeModalDirect(){document.getElementById('modalOverlay').classList.remove('open');}
+
+// ========== SEARCH ==========
+function handleGlobalSearch(q){
+  if(currentView==='sessions')renderSessions();
+  else if(q.length>2){showView('sessions',document.querySelector('[onclick*="sessions"]'));setTimeout(()=>renderSessions(),50);}
+}
+
+// ========== NAV ==========
+function showView(id,navEl){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  if(navEl)navEl.classList.add('active');
+  currentView=id;
+  const titles={overview:'Dashboard',facilitators:'By Facilitator',blc:'By BLC',dates:'By Date',sessions:'All Sessions',free:'Free Facilitators',mutual:'Mutual Free Days'};
+  document.getElementById('pageTitle').textContent=titles[id]||id;
+  if(id==='sessions')renderSessions();
+  if(window.innerWidth<768)closeSidebar();
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebarOverlay').classList.toggle('open');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebarOverlay').classList.remove('open');}
+
+// ========== AUTO-REFRESH every 30 min ==========
+setInterval(()=>loadData(true), 30*60*1000);
+
+// ========== JSONP FETCH — pure script-tag, no fetch() API ==========
+// This is the only method that reliably bypasses Apps Script CORS restrictions.
+function fetchViaJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '__lld_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    const script = document.createElement('script');
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timeout — check your Web App URL and deployment settings'));
+    }, 20000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch(e) {}
+      if (script.parentNode) document.head.removeChild(script);
+    }
+
+    window[cbName] = function(data) {
+      cleanup();
+      resolve(data);
+    };
+
+    const sep = url.includes('?') ? '&' : '?';
+    script.src = url + sep + 'callback=' + cbName + '&t=' + Date.now();
+    script.onerror = function() {
+      cleanup();
+      reject(new Error('Script load failed — is the URL correct?'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// ========== START ==========
+startup();
+</script>
+</body>
+</html>
